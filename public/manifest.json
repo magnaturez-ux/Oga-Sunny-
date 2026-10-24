@@ -1,0 +1,17 @@
+{
+  "name": "Oga Sunny Africa",
+  "short_name": "Oga Sunny",
+  "description": "Find house nearest to you, trenches chop and Oga Sunny Radio.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

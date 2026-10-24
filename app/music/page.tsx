@@ -1,139 +1,125 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import PageHeader from "@/components/PageHeader";
+import { formatTime, usePlayer } from "@/context/PlayerContext";
+import { NextIcon, PauseIcon, PlayIcon, PrevIcon, VolumeIcon } from "@/components/Icons";
 
-type FoodSpot = {
-  id: number;
-  name: string;
-  meal: string;
-  price: string;
-  location: string;
-  phone: string;
-  latitude: number;
-  longitude: number;
-  distanceKm?: number;
-};
-
-const spots: FoodSpot[] = [
-  { id: 1, name: 'Mama Put Rice', meal: 'Rice + Stew', price: 'N700', location: 'Mararaba', phone: '08031111111', latitude: 9.1301, longitude: 7.3694 },
-  { id: 2, name: 'Suya City', meal: 'Suya', price: 'N500', location: 'Masaka', phone: '08032222222', latitude: 9.1171, longitude: 7.4086 },
-  { id: 3, name: 'Okpa Hub', meal: 'Okpa', price: 'N300', location: 'New Nyanya', phone: '08033333333', latitude: 9.0687, longitude: 7.5035 },
-  { id: 4, name: 'Awoof Pot', meal: 'Beans + Plantain', price: 'N650', location: 'One Man Ado', phone: '08034444444', latitude: 9.0874, longitude: 7.3884 },
-  { id: 5, name: 'Buka Express', meal: 'Jollof Rice', price: 'N850', location: 'Mararaba', phone: '08035555555', latitude: 9.1378, longitude: 7.3811 },
-  { id: 6, name: 'Street Swallow', meal: 'Eba & Soup', price: 'N600', location: 'Masaka', phone: '08036666666', latitude: 9.1064, longitude: 7.4209 },
-  { id: 7, name: 'Ariya Cook', meal: 'Yam Porridge', price: 'N550', location: 'New Nyanya', phone: '08037777777', latitude: 9.0808, longitude: 7.4912 },
-  { id: 8, name: 'Pepper Pot', meal: 'Snail & Rice', price: 'N900', location: 'One Man Ado', phone: '08038888888', latitude: 9.0993, longitude: 7.3576 },
-  { id: 9, name: 'No Wahala Buka', meal: 'Amala', price: 'N700', location: 'Mararaba', phone: '08039999999', latitude: 9.1439, longitude: 7.3459 },
-  { id: 10, name: 'Aunty Nneka', meal: 'Moi Moi', price: 'N350', location: 'Masaka', phone: '08040000000', latitude: 9.1238, longitude: 7.4358 },
-  { id: 11, name: 'Roadside Grill', meal: 'Chicken & Chips', price: 'N800', location: 'New Nyanya', phone: '08041111111', latitude: 9.0711, longitude: 7.5177 },
-  { id: 12, name: 'Mama Ada Buka', meal: 'Ofada Rice', price: 'N950', location: 'One Man Ado', phone: '08042222222', latitude: 9.0921, longitude: 7.3672 },
-  { id: 13, name: 'Abuja Swallow', meal: 'Fufu', price: 'N750', location: 'Mararaba', phone: '08043333333', latitude: 9.1517, longitude: 7.3735 },
-  { id: 14, name: 'Golden Fry', meal: 'Fish + Chips', price: 'N1,000', location: 'Masaka', phone: '08044444444', latitude: 9.1119, longitude: 7.4241 },
-  { id: 15, name: 'Village Bowl', meal: 'Pasta', price: 'N650', location: 'New Nyanya', phone: '08045555555', latitude: 9.0621, longitude: 7.4949 }
-];
-
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const earthRadiusKm = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-export default function TrenchesChopPage() {
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      () => {
-        setLocation({ lat: 9.0765, lng: 7.3986 });
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  }, []);
-
-  const sortedSpots = useMemo(() => {
-    if (!location) return spots;
-
-    return [...spots]
-      .map((spot) => ({
-        ...spot,
-        distanceKm: haversineDistance(location.lat, location.lng, spot.latitude, spot.longitude)
-      }))
-      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
-  }, [location]);
+export default function MusicPage() {
+  const {
+    tracks,
+    currentIndex,
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    error,
+    playTrack,
+    togglePlay,
+    next,
+    prev,
+    seek,
+    setVolume,
+  } = usePlayer();
 
   return (
-    <main className="bg-[#020202] px-4 pb-24 pt-8 text-white sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6">
-          <p className="yellow-glow text-xs font-bold uppercase tracking-[0.3em]">Chop</p>
-          <h1 className="graffiti mt-2 text-3xl uppercase text-[#00FF88]">Trenches Chop</h1>
-        </div>
+    <div className="space-y-6">
+      <PageHeader kicker="Oga Sunny Radio" title="PK Official Playlist" subtitle="OORGANIC NO BE MECHANIC. Music keeps playing while you browse." />
 
-        {location ? (
-          <div className="mb-6 rounded-2xl border border-[#00FF88] bg-black p-4 text-sm text-zinc-300">
-            Your location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <section aria-label="Now playing" className="space-y-5 rounded-2xl border-2 border-neon p-5">
+          <div className="space-y-1">
+            <p className="text-xs font-black uppercase tracking-widest text-sun">Now playing</p>
+            <h2 className="font-graffiti text-3xl leading-tight text-neon text-balance">{currentTrack.title}</h2>
+            <p className="text-white/70">{currentTrack.artist}</p>
           </div>
-        ) : (
-          <div className="mb-6 rounded-2xl border border-[#FFD60A] bg-[#111111] p-4 text-sm text-[#FFD60A]">
-            Getting your location... please allow geolocation.
-          </div>
-        )}
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {sortedSpots.map((spot) => (
-            <div key={spot.id} className="neon-border rounded-2xl bg-black p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-[#FFD60A]">{spot.name}</h2>
-                  <p className="text-sm text-zinc-400">{spot.location}</p>
-                </div>
-                <span className="rounded-full border border-[#00FF88] px-2 py-1 text-[10px] uppercase text-[#00FF88]">
-                  {spot.meal}
-                </span>
-              </div>
+          {error ? (
+            <p role="alert" className="rounded-lg border border-sun/50 bg-sun/10 px-3 py-2 text-sm text-sun">
+              {error}
+            </p>
+          ) : null}
 
-              <div className="mb-3 space-y-2 text-sm text-zinc-300">
-                <p>Price: {spot.price}</p>
-                <p>Distance: {(spot.distanceKm ?? 0).toFixed(1)} KM</p>
-              </div>
-
-              <div className="flex gap-2">
-                <a
-                  href={`tel:${spot.phone}`}
-                  className="flex-1 rounded-xl bg-[#00FF88] px-3 py-2 text-center font-bold text-black"
-                >
-                  Call
-                </a>
-                <a
-                  href={`https://wa.me/${spot.phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 rounded-xl border border-[#FFD60A] px-3 py-2 text-center font-bold text-[#FFD60A]"
-                >
-                  WhatsApp
-                </a>
-              </div>
+          <div className="space-y-1">
+            <label htmlFor="progress" className="sr-only">Seek</label>
+            <input
+              id="progress"
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => seek(Number(e.target.value))}
+              disabled={!duration}
+              className="w-full accent-[#00FF88]"
+            />
+            <div className="flex justify-between text-xs tabular-nums text-white/60">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
-          ))}
-        </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-5">
+            <button type="button" onClick={prev} aria-label="Previous track" className="grid h-12 w-12 place-items-center rounded-full border-2 border-white/20 hover:border-sun hover:text-sun">
+              <PrevIcon className="h-5 w-5" />
+            </button>
+            <button type="button" onClick={togglePlay} aria-label={isPlaying ? "Pause" : "Play"} className="grid h-16 w-16 place-items-center rounded-full bg-neon text-black shadow-neon">
+              {isPlaying ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />}
+            </button>
+            <button type="button" onClick={next} aria-label="Next track" className="grid h-12 w-12 place-items-center rounded-full border-2 border-white/20 hover:border-sun hover:text-sun">
+              <NextIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <VolumeIcon className="h-5 w-5 shrink-0 text-sun" />
+            <label htmlFor="volume" className="sr-only">Volume</label>
+            <input
+              id="volume"
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="w-full accent-[#FFD400]"
+            />
+            <span className="w-10 text-right text-xs tabular-nums text-white/60">{Math.round(volume * 100)}%</span>
+          </div>
+
+          <ol className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/15">
+            {tracks.map((t, i) => {
+              const active = i === currentIndex;
+              return (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => playTrack(i)}
+                    aria-current={active ? "true" : undefined}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left ${active ? "bg-neon/10" : "hover:bg-white/5"}`}
+                  >
+                    <span className="w-5 font-graffiti text-sun">{i + 1}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate font-bold ${active ? "text-neon" : ""}`}>{t.title}</span>
+                      <span className="block text-xs text-white/60">{t.artist}</span>
+                    </span>
+                    {active && isPlaying ? <span className="text-xs font-black uppercase text-neon">Playing</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+
+        <section aria-label="Lyrics" className="rounded-2xl border-2 border-sun p-5">
+          <h2 className="mb-4 text-xs font-black uppercase tracking-widest text-sun">Lyrics</h2>
+          <div className="space-y-1 font-graffiti text-lg leading-relaxed">
+            {currentTrack.lyrics.map((line, i) =>
+              line ? <p key={i}>{line}</p> : <div key={i} className="h-4" aria-hidden />
+            )}
+          </div>
+        </section>
       </div>
-    </main>
+    </div>
   );
 }

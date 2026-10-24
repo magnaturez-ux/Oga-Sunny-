@@ -1,8 +1,0 @@
-This folder is reserved for music assets and app media.
-
-Add your MP3 files here, for example:
-- /public/music/organic-no-be-mechanic.mp3
-- /public/music/mararaba-at-night.mp3
-- /public/music/fine-fine-girls.mp3
-
-Then update the audio file URLs in the app to point to those files.

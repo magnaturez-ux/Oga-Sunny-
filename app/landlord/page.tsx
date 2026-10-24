@@ -1,171 +1,182 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { useEffect, useState, type FormEvent } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import PageHeader from "@/components/PageHeader";
+import { HOUSE_TYPES, type House, type HouseType } from "@/data/houses";
+import { AREAS, AREA_CENTERS, formatNaira, whatsappLink, type Area } from "@/lib/geo";
+import { generateListingId, loadListings, saveListing } from "@/lib/listings";
 
-type House = {
-  id: number;
+type FormState = {
   name: string;
-  location: string;
-  latitude: number;
-  longitude: number;
+  phone: string;
+  area: Area;
+  type: HouseType;
   price: string;
-  type: string;
-  status: string;
-  distanceKm?: number;
+  description: string;
 };
 
-const mockHouses: House[] = [
-  { id: 1, name: 'Sunrise Duplex', location: 'Mararaba', latitude: 9.1278, longitude: 7.3775, price: 'N18M', type: '3 Bedroom', status: 'Verified' },
-  { id: 2, name: 'Greenfield Court', location: 'Masaka', latitude: 9.1159, longitude: 7.4146, price: 'N15M', type: '2 Bedroom', status: 'New' },
-  { id: 3, name: 'Aso Rock Villa', location: 'Masaka', latitude: 9.1096, longitude: 7.3928, price: 'N25M', type: '4 Bedroom', status: 'Premium' },
-  { id: 4, name: 'One Man Ado Heights', location: 'One Man Ado', latitude: 9.0958, longitude: 7.3558, price: 'N12M', type: '2 Bedroom', status: 'Hot' },
-  { id: 5, name: 'City Grace Homes', location: 'Mararaba', latitude: 9.1463, longitude: 7.3552, price: 'N17M', type: '3 Bedroom', status: 'Verified' },
-  { id: 6, name: 'Lucky Star Estate', location: 'New Nyanya', latitude: 9.0747, longitude: 7.5149, price: 'N14M', type: '2 Bedroom', status: 'New' },
-  { id: 7, name: 'Auntie Bimpe House', location: 'Masaka', latitude: 9.1522, longitude: 7.4266, price: 'N11M', type: '1 Bedroom', status: 'Affordable' },
-  { id: 8, name: 'Sunny Lane Apartments', location: 'Mararaba', latitude: 9.1397, longitude: 7.3249, price: 'N19M', type: '3 Bedroom', status: 'Verified' },
-  { id: 9, name: 'Ado Pride Suites', location: 'One Man Ado', latitude: 9.0854, longitude: 7.3938, price: 'N16M', type: '2 Bedroom', status: 'Hot' },
-  { id: 10, name: 'Nyanya Family Homes', location: 'New Nyanya', latitude: 9.0635, longitude: 7.5019, price: 'N13M', type: '2 Bedroom', status: 'Affordable' },
-  { id: 11, name: 'Golden Palm Homes', location: 'Mararaba', latitude: 9.1197, longitude: 7.3657, price: 'N21M', type: '4 Bedroom', status: 'Premium' },
-  { id: 12, name: 'Osho Realty', location: 'Masaka', latitude: 9.0892, longitude: 7.4302, price: 'N10M', type: '1 Bedroom', status: 'Affordable' },
-  { id: 13, name: 'Oga Sunny Court', location: 'One Man Ado', latitude: 9.1031, longitude: 7.3482, price: 'N20M', type: '3 Bedroom', status: 'Verified' },
-  { id: 14, name: 'Lagos Blue Homes', location: 'New Nyanya', latitude: 9.0809, longitude: 7.5338, price: 'N22M', type: '4 Bedroom', status: 'Premium' },
-  { id: 15, name: 'Abba Terrace', location: 'Mararaba', latitude: 9.1369, longitude: 7.3869, price: 'N9M', type: '1 Bedroom', status: 'Affordable' },
-  { id: 16, name: 'Mighty Land Lodge', location: 'Masaka', latitude: 9.1588, longitude: 7.4032, price: 'N24M', type: '4 Bedroom', status: 'Premium' },
-  { id: 17, name: 'Mafikuyomi Homes', location: 'One Man Ado', latitude: 9.0782, longitude: 7.3798, price: 'N12M', type: '2 Bedroom', status: 'New' },
-  { id: 18, name: 'Mighty Grace Flats', location: 'New Nyanya', latitude: 9.0578, longitude: 7.4864, price: 'N15M', type: '2 Bedroom', status: 'Verified' },
-  { id: 19, name: 'Junction Villa', location: 'Mararaba', latitude: 9.1216, longitude: 7.3462, price: 'N18M', type: '3 Bedroom', status: 'Hot' },
-  { id: 20, name: 'Sunny Place Homes', location: 'Masaka', latitude: 9.1004, longitude: 7.4371, price: 'N13M', type: '2 Bedroom', status: 'New' }
-];
+const EMPTY: FormState = {
+  name: "",
+  phone: "",
+  area: "Mararaba",
+  type: "Self-Con",
+  price: "",
+  description: "",
+};
 
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const earthRadiusKm = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-export default function FindPage() {
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
+export default function LandlordPage() {
+  const [form, setForm] = useState<FormState>(EMPTY);
+  const [error, setError] = useState<string | null>(null);
+  const [listings, setListings] = useState<House[]>([]);
+  const [poster, setPoster] = useState<House | null>(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      () => {
-        setLocation({ lat: 9.0765, lng: 7.3986 });
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
+    setListings(loadListings());
   }, []);
 
-  const houses = useMemo(() => {
-    if (!location) return mockHouses;
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
 
-    return mockHouses
-      .map((house) => ({
-        ...house,
-        distanceKm: haversineDistance(location.lat, location.lng, house.latitude, house.longitude)
-      }))
-      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
-  }, [location]);
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    const price = Number(form.price);
 
-  const filteredHouses = houses.filter((house) => {
-    const matchesFilter = filter === 'all' ? true : house.location.toLowerCase() === filter.toLowerCase();
-    const matchesSearch =
-      house.name.toLowerCase().includes(search.toLowerCase()) ||
-      house.location.toLowerCase().includes(search.toLowerCase());
+    if (form.name.trim().length < 2) return setError("Abeg enter your full name.");
+    if (phoneDigits.length < 10 || phoneDigits.length > 14) return setError("Phone number no correct.");
+    if (!Number.isFinite(price) || price <= 0) return setError("Enter correct rent price.");
+    setError(null);
 
-    return matchesFilter && matchesSearch;
-  });
+    const center = AREA_CENTERS[form.area];
+    const jitter = () => (Math.random() - 0.5) * 0.004;
+    const listing: House = {
+      id: generateListingId(listings),
+      title: `${form.type} in ${form.area}`,
+      area: form.area,
+      type: form.type,
+      price: Math.round(price),
+      lat: center.lat + jitter(),
+      lng: center.lng + jitter(),
+      phone: form.phone.trim(),
+      landlord: form.name.trim(),
+      description: form.description.trim() || "Contact landlord for more details.",
+    };
+
+    setListings(saveListing(listing));
+    setPoster(listing);
+    setForm(EMPTY);
+  };
 
   return (
-    <main className="bg-[#020202] px-4 pb-24 pt-8 text-white sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-8">
+      <PageHeader
+        kicker="Landlord Corner"
+        title="List Your House"
+        subtitle="Fill the form, get your OGS ID and print the QR poster. Paste am for gate, tenants go scan and WhatsApp you."
+      />
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 rounded-2xl border-2 border-neon p-5">
           <div>
-            <p className="yellow-glow text-xs font-bold uppercase tracking-[0.3em]">Find</p>
-            <h1 className="graffiti mt-2 text-3xl uppercase text-[#00FF88]">Nearest Houses</h1>
+            <label htmlFor="name" className="label">Landlord name</label>
+            <input id="name" className="field" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Baba Musa" autoComplete="name" required />
           </div>
-
-          <div className="flex gap-3">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search location or house"
-              className="rounded-xl border border-[#00FF88] bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-500"
-            />
-            <select
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              className="rounded-xl border border-[#00FF88] bg-black px-3 py-2 text-sm text-white"
-            >
-              <option value="all">All areas</option>
-              <option value="mararaba">Mararaba</option>
-              <option value="masaka">Masaka</option>
-              <option value="one man ado">One Man Ado</option>
-              <option value="new nyanya">New Nyanya</option>
-            </select>
+          <div>
+            <label htmlFor="phone" className="label">Phone</label>
+            <input id="phone" type="tel" inputMode="tel" className="field" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="0803 123 4567" autoComplete="tel" required />
           </div>
-        </div>
-
-        {location ? (
-          <div className="mb-6 rounded-2xl border border-[#00FF88] bg-black p-4 text-sm text-zinc-300">
-            Your location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-          </div>
-        ) : (
-          <div className="mb-6 rounded-2xl border border-[#FFD60A] bg-[#111111] p-4 text-sm text-[#FFD60A]">
-            Getting your location... please allow geolocation.
-          </div>
-        )}
-
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredHouses.map((house) => (
-            <div key={house.id} className="neon-border rounded-2xl bg-black p-4">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-[#FFD60A]">{house.name}</h2>
-                  <p className="text-sm text-zinc-400">{house.location}</p>
-                </div>
-                <span className="rounded-full border border-[#00FF88] px-2 py-1 text-[10px] uppercase text-[#00FF88]">
-                  {house.status}
-                </span>
-              </div>
-
-              <div className="mb-3 space-y-2 text-sm text-zinc-300">
-                <p>Type: {house.type}</p>
-                <p>Price: {house.price}</p>
-                <p>Distance: {(house.distanceKm ?? 0).toFixed(1)} KM</p>
-              </div>
-
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-[#00FF88] bg-[#06150d] p-2 text-xs text-[#00FF88]">
-                <span>Map ID</span>
-                <span>{house.id.toString().padStart(3, '0')}</span>
-              </div>
-
-              <div className="flex justify-center rounded-xl border border-[#FFD60A] bg-[#111111] p-2">
-                <QRCodeSVG value={`Oga Sunny Africa|${house.name}|${house.location}|${house.price}|${house.type}`} size={110} fgColor="#00FF88" bgColor="#111111" />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="area" className="label">Location</label>
+              <select id="area" className="field" value={form.area} onChange={(e) => update("area", e.target.value as Area)}>
+                {AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
             </div>
-          ))}
-        </div>
+            <div>
+              <label htmlFor="type" className="label">Type</label>
+              <select id="type" className="field" value={form.type} onChange={(e) => update("type", e.target.value as HouseType)}>
+                {HOUSE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="price" className="label">Rent per year (₦)</label>
+            <input id="price" type="number" inputMode="numeric" min={1} className="field" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="350000" required />
+          </div>
+          <div>
+            <label htmlFor="desc" className="label">Description</label>
+            <textarea id="desc" rows={4} maxLength={300} className="field resize-none" value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Prepaid meter, borehole, tiled floor..." />
+          </div>
+
+          {error ? <p role="alert" className="text-sm font-bold text-red-400">{error}</p> : null}
+
+          <button type="submit" className="w-full rounded-lg bg-neon py-3 font-black uppercase tracking-widest text-black">
+            Generate ID & Poster
+          </button>
+        </form>
+
+        <section aria-label="QR poster" className="space-y-4">
+          {poster ? (
+            <>
+              <div className="print-area rounded-2xl border-4 border-black bg-sun p-6 text-black">
+                <p className="font-graffiti text-3xl leading-tight">House For Rent!</p>
+                <p className="mt-1 text-sm font-black uppercase tracking-widest">Oga Sunny Africa</p>
+                <div className="my-5 flex justify-center rounded-xl bg-white p-4">
+                  <QRCodeSVG
+                    value={whatsappLink(poster.phone, `Hello ${poster.landlord}, I scan your poster ${poster.id}. The ${poster.type} for ${poster.area} still dey?`)}
+                    size={200}
+                    level="M"
+                    aria-label={`QR code for ${poster.id}`}
+                  />
+                </div>
+                <p className="text-center font-graffiti text-2xl">{poster.id}</p>
+                <dl className="mt-4 grid grid-cols-2 gap-2 text-sm font-bold">
+                  <dt>Type</dt><dd className="text-right">{poster.type}</dd>
+                  <dt>Area</dt><dd className="text-right">{poster.area}</dd>
+                  <dt>Rent / yr</dt><dd className="text-right">{formatNaira(poster.price)}</dd>
+                  <dt>Call</dt><dd className="text-right">{poster.phone}</dd>
+                </dl>
+                <p className="mt-4 text-center text-xs font-black uppercase tracking-widest">
+                  Scan to WhatsApp landlord
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full rounded-lg border-2 border-sun py-3 font-black uppercase tracking-widest text-sun"
+              >
+                Print poster
+              </button>
+            </>
+          ) : (
+            <div className="grid min-h-64 place-items-center rounded-2xl border-2 border-dashed border-sun/60 p-8 text-center text-white/60">
+              Your QR poster go show here after you submit.
+            </div>
+          )}
+
+          {listings.length > 0 ? (
+            <div className="space-y-2">
+              <h2 className="text-xs font-black uppercase tracking-widest text-sun">Your listings on this phone</h2>
+              <ul className="divide-y divide-white/10 rounded-xl border border-white/15">
+                {listings.map((l) => (
+                  <li key={l.id}>
+                    <button
+                      type="button"
+                      onClick={() => setPoster(l)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-white/5"
+                    >
+                      <span className="font-bold text-neon">{l.id}</span>
+                      <span className="truncate text-white/70">{l.type} · {l.area}</span>
+                      <span className="shrink-0 text-sun">{formatNaira(l.price)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
       </div>
-    </main>
+    </div>
   );
 }
